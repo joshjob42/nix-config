@@ -54,13 +54,18 @@
               # iwd handles Wi-Fi *association* (iwctl); the installer's existing
               # `99-wireless-client-dhcp` systemd-networkd rule does the DHCP.
               networking.wireless.iwd.enable = true;
-              # This laptop's Wi-Fi is a MediaTek MT7922 (mt7921e driver). The stock
-              # installer ships only a STRIPPED firmware set (no MT7922 blob), so the
-              # card never initialises. `enableRedistributableFirmware` gets silently
-              # overridden by the installer; forcing the full linux-firmware in via
-              # mkOverride actually wins. Then load the driver explicitly.
-              nixpkgs.config.allowUnfree = true;
-              hardware.firmware = lib.mkOverride 10 [ pkgs.linux-firmware ];
+              # Wi-Fi is a MediaTek MT7922 (mt7921e). Include ONLY its firmware —
+              # the full linux-firmware bloats the kexec initrd (~1GB) and breaks
+              # loading. `enableRedistributableFirmware` is silently overridden by
+              # the installer, so force just these blobs in via mkOverride.
+              hardware.firmware = lib.mkOverride 10 [
+                (pkgs.runCommandLocal "mt7922-firmware" { } ''
+                  mkdir -p $out/lib/firmware/mediatek
+                  cp ${pkgs.linux-firmware}/lib/firmware/mediatek/WIFI_RAM_CODE_MT7922_1.bin $out/lib/firmware/mediatek/
+                  cp ${pkgs.linux-firmware}/lib/firmware/mediatek/WIFI_MT7922_patch_mcu_1_1_hdr.bin $out/lib/firmware/mediatek/
+                  cp ${pkgs.linux-firmware}/lib/firmware/mediatek/BT_RAM_CODE_MT7922_1_1_hdr.bin $out/lib/firmware/mediatek/
+                '')
+              ];
               boot.kernelModules = [ "mt7921e" ];
               environment.systemPackages = with pkgs; [ iw iwd ];
               system.stateVersion = "26.05";
