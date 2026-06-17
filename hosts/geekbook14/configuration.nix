@@ -23,6 +23,16 @@
   boot.loader.efi.efiSysMountPoint = "/boot";
   boot.supportedFilesystems = [ "ntfs" "btrfs" ];
 
+  # WORKAROUND (2026-06-17): on this Meteor Lake panel, i915 AND the xe driver
+  # fail to bring up the internal eDP display ("[ENCODER:...DDI B/PHY B] failed
+  # to retrieve link info, disabling eDP"), so KMS leaves the Wayland compositor
+  # with no output and COSMIC blacks out. nomodeset falls back to the firmware
+  # framebuffer (simpledrm), which DOES light the panel -- but it's SOFTWARE
+  # RENDERED (no GPU acceleration, possibly non-native resolution). Tried and did
+  # NOT help: xe.force_probe, i915.enable_psr/enable_dc/enable_fbc=0.
+  # Remove once the eDP link works (newer/CachyOS kernel or a panel quirk). GPU id: 7d55.
+  boot.kernelParams = [ "nomodeset" ];
+
   # --- Nix / flakes ----------------------------------------------------------
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   nix.settings.auto-optimise-store = true;
