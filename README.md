@@ -29,11 +29,13 @@ nix eval .#nixosConfigurations.geekbook14.config.system.build.toplevel.drvPath
 > `p6` + `p7`. Windows lives on its own partitions and is never touched.
 
 ### A. From the running CachyOS (last steps before the jump)
+
+> These are **bash** commands. CachyOS's default shell is **fish**, which doesn't
+> understand `$(...)` — so the build line is wrapped in `bash -c '…'`.
+
 ```sh
 # Build + stage the NixOS kexec installer (instant if already cached)
-TARBALL="$(nix build --no-link --print-out-paths \
-  github:nix-community/nixos-images#kexec-installer-nixos-stable)/nixos-kexec-installer-x86_64-linux.tar.gz"
-sudo tar -xf "$TARBALL" -C /root
+bash -c 'TARBALL=$(nix build --no-link --print-out-paths github:nix-community/nixos-images#kexec-installer-nixos-stable)/nixos-kexec-installer-x86_64-linux.tar.gz; sudo tar -xf "$TARBALL" -C /root'
 
 # Launch it. THIS REBOOTS the machine into a NixOS installer in RAM.
 # Your CachyOS session ends here — keep this guide open on another device.
