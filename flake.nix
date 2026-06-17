@@ -61,8 +61,14 @@
               #   * i915/  — Intel Meteor Lake GPU (GuC/HuC/DMC). Without it the
               #     GPU wedges ("failed to initialize GPU") and the console breaks.
               #   * mediatek/ — MT7922 Wi-Fi + Bluetooth.
+              # `passthru.compressFirmware = false` is essential (checked in nixos
+              # udev.nix): without it the firmware ends up as `*.bin.zst`, and the
+              # installer kernel can't load compressed firmware — it asks for
+              # `mtl_guc_70.bin`, finds only `.zst`, fails -ENOENT, and the GPU wedges.
+              # (compressFirmwareZstd also only works on the real linux-firmware pkg,
+              # silently emptying a hand-rolled one.) So: ship these UNCOMPRESSED.
               hardware.firmware = lib.mkOverride 10 [
-                (pkgs.runCommandLocal "geekbook14-firmware" { } ''
+                (pkgs.runCommandLocal "geekbook14-firmware" { passthru.compressFirmware = false; } ''
                   mkdir -p $out/lib/firmware/mediatek
                   cp -r ${pkgs.linux-firmware}/lib/firmware/i915 $out/lib/firmware/
                   cp ${pkgs.linux-firmware}/lib/firmware/mediatek/WIFI_RAM_CODE_MT7922_1.bin $out/lib/firmware/mediatek/
