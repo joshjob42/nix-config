@@ -50,15 +50,17 @@
           inherit system;
           modules = [
             nixos-images.nixosModules.kexec-installer
-            ({ pkgs, ... }: {
+            ({ pkgs, lib, ... }: {
               # iwd handles Wi-Fi *association* (iwctl); the installer's existing
               # `99-wireless-client-dhcp` systemd-networkd rule does the DHCP.
-              # So we deliberately do NOT set iwd's EnableNetworkConfiguration.
               networking.wireless.iwd.enable = true;
-              # This laptop's Wi-Fi is a MediaTek MT7922 (mt7921e driver). The
-              # stock installer lacks its firmware, so the device never appears —
-              # pull in linux-firmware and load the driver explicitly.
-              hardware.enableRedistributableFirmware = true;
+              # This laptop's Wi-Fi is a MediaTek MT7922 (mt7921e driver). The stock
+              # installer ships only a STRIPPED firmware set (no MT7922 blob), so the
+              # card never initialises. `enableRedistributableFirmware` gets silently
+              # overridden by the installer; forcing the full linux-firmware in via
+              # mkOverride actually wins. Then load the driver explicitly.
+              nixpkgs.config.allowUnfree = true;
+              hardware.firmware = lib.mkOverride 10 [ pkgs.linux-firmware ];
               boot.kernelModules = [ "mt7921e" ];
               environment.systemPackages = with pkgs; [ iw iwd ];
               system.stateVersion = "26.05";
