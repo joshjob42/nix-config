@@ -55,6 +55,11 @@
               # `99-wireless-client-dhcp` systemd-networkd rule does the DHCP.
               # So we deliberately do NOT set iwd's EnableNetworkConfiguration.
               networking.wireless.iwd.enable = true;
+              # This laptop's Wi-Fi is a MediaTek MT7922 (mt7921e driver). The
+              # stock installer lacks its firmware, so the device never appears —
+              # pull in linux-firmware and load the driver explicitly.
+              hardware.enableRedistributableFirmware = true;
+              boot.kernelModules = [ "mt7921e" ];
               environment.systemPackages = with pkgs; [ iw iwd ];
               system.stateVersion = "26.05";
             })
