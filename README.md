@@ -32,10 +32,13 @@ nix eval .#nixosConfigurations.geekbook14.config.system.build.toplevel.drvPath
 
 > These are **bash** commands. CachyOS's default shell is **fish**, which doesn't
 > understand `$(...)` — so the build line is wrapped in `bash -c '…'`.
+>
+> We use this repo's **`kexec-wifi`** image, which adds `iwd`/`iwctl` — the stock
+> nixos-images kexec installer has **no Wi-Fi tools**, a dead end on a Wi-Fi-only laptop.
 
 ```sh
-# Build + stage the NixOS kexec installer (instant if already cached)
-bash -c 'TARBALL=$(nix build --no-link --print-out-paths github:nix-community/nixos-images#kexec-installer-nixos-stable)/nixos-kexec-installer-x86_64-linux.tar.gz; sudo tar -xf "$TARBALL" -C /root'
+# Build + stage the Wi-Fi-capable kexec installer from this repo
+bash -c 'TGZ=$(nix build --no-link --print-out-paths github:joshjob42/nix-config#kexec-wifi)/nixos-kexec-installer-x86_64-linux.tar.gz; sudo tar -xf "$TGZ" -C /root'
 
 # Launch it. THIS REBOOTS the machine into a NixOS installer in RAM.
 # Your CachyOS session ends here — keep this guide open on another device.
@@ -47,12 +50,13 @@ and `ssh root@<that-ip>` from the Mac.)
 
 ### B. Inside the kexec installer
 ```sh
-# 1. Network. Wired = automatic. Wi-Fi:
+# 1. Network. Wired = automatic. Wi-Fi (this image ships iwctl):
 iwctl
-#    > station wlan0 scan
-#    > station wlan0 get-networks
-#    > station wlan0 connect "<YOUR-SSID>"
-#    > exit
+#   [iwd]# device list                     # note your device name (wlan0 or wlp...)
+#   [iwd]# station <dev> scan
+#   [iwd]# station <dev> get-networks
+#   [iwd]# station <dev> connect "<SSID>"   # prompts for the password
+#   [iwd]# exit
 ping -c1 github.com    # confirm you're online
 
 # 2. Grab this repo (public, no auth)
