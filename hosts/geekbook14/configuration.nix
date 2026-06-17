@@ -26,6 +26,12 @@
   # --- Nix / flakes ----------------------------------------------------------
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   nix.settings.auto-optimise-store = true;
+  # A trusted user can use binary caches a flake requests (its `nixConfig`
+  # extra-substituters) WITHOUT the interactive y/N prompt. cache.nixos.org is
+  # always trusted. When we add the CachyOS kernel later, the chaotic-nyx NixOS
+  # module wires up its own signed cache automatically — so no prompt, and the
+  # kernel is fetched prebuilt instead of compiled.
+  nix.settings.trusted-users = [ "root" "joshjob42" ];
   nix.gc = {
     automatic = true;
     dates = "weekly";
