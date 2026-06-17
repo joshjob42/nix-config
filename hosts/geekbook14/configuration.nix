@@ -48,6 +48,12 @@
 
   # --- Hardware: Intel Meteor Lake + Arc graphics ----------------------------
   hardware.cpu.intel.updateMicrocode = true;
+  # REQUIRED on Meteor Lake: ships the i915 GuC/HuC/DMC firmware. Without it the
+  # Arc GPU fails to initialize and the console wedges right as the desktop
+  # starts (the exact "boots then hangs" failure the README warns about). Also
+  # provides the MT7922 Wi-Fi/Bluetooth firmware. The installed kernel loads the
+  # zstd-compressed blobs fine (unlike the minimal kexec installer image).
+  hardware.enableRedistributableFirmware = true;
   hardware.graphics = {
     enable = true;
     extraPackages = with pkgs; [
