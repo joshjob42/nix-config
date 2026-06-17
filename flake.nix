@@ -51,8 +51,10 @@
           modules = [
             nixos-images.nixosModules.kexec-installer
             ({ pkgs, ... }: {
+              # iwd handles Wi-Fi *association* (iwctl); the installer's existing
+              # `99-wireless-client-dhcp` systemd-networkd rule does the DHCP.
+              # So we deliberately do NOT set iwd's EnableNetworkConfiguration.
               networking.wireless.iwd.enable = true;
-              networking.wireless.iwd.settings.General.EnableNetworkConfiguration = true;
               environment.systemPackages = with pkgs; [ iw iwd ];
               system.stateVersion = "26.05";
             })
