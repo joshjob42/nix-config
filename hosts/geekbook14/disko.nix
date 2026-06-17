@@ -12,7 +12,7 @@
     disk = {
       esp = {
         type = "disk";
-        device = "/dev/disk/by-id/nvme-CT1000P310SSD8_2538531B56EA-part7";
+        device = "/dev/disk/by-partuuid/1814dcf3-2e06-4b66-883d-f3c0b8e56c31"; # nvme0n1p7
         content = {
           # Treat this partition as a single filesystem (no partition table
           # is created here — disko just runs mkfs.vfat on this one partition).
@@ -25,7 +25,7 @@
 
       root = {
         type = "disk";
-        device = "/dev/disk/by-id/nvme-CT1000P310SSD8_2538531B56EA-part6";
+        device = "/dev/disk/by-partuuid/d35b7008-1be4-43e0-a165-67683ecac70d"; # nvme0n1p6
         content = {
           type = "btrfs";
           extraArgs = [ "-f" "-L" "nixos" ];
