@@ -54,13 +54,17 @@
               # iwd handles Wi-Fi *association* (iwctl); the installer's existing
               # `99-wireless-client-dhcp` systemd-networkd rule does the DHCP.
               networking.wireless.iwd.enable = true;
-              # Wi-Fi is a MediaTek MT7922 (mt7921e). Include ONLY its firmware —
-              # the full linux-firmware bloats the kexec initrd (~1GB) and breaks
-              # loading. `enableRedistributableFirmware` is silently overridden by
-              # the installer, so force just these blobs in via mkOverride.
+              # Include ONLY the firmware THIS machine needs, not all of
+              # linux-firmware (which bloats the kexec initrd to ~1GB and won't
+              # load). `enableRedistributableFirmware` is silently overridden by
+              # the installer, so force these blobs in via mkOverride:
+              #   * i915/  — Intel Meteor Lake GPU (GuC/HuC/DMC). Without it the
+              #     GPU wedges ("failed to initialize GPU") and the console breaks.
+              #   * mediatek/ — MT7922 Wi-Fi + Bluetooth.
               hardware.firmware = lib.mkOverride 10 [
-                (pkgs.runCommandLocal "mt7922-firmware" { } ''
+                (pkgs.runCommandLocal "geekbook14-firmware" { } ''
                   mkdir -p $out/lib/firmware/mediatek
+                  cp -r ${pkgs.linux-firmware}/lib/firmware/i915 $out/lib/firmware/
                   cp ${pkgs.linux-firmware}/lib/firmware/mediatek/WIFI_RAM_CODE_MT7922_1.bin $out/lib/firmware/mediatek/
                   cp ${pkgs.linux-firmware}/lib/firmware/mediatek/WIFI_MT7922_patch_mcu_1_1_hdr.bin $out/lib/firmware/mediatek/
                   cp ${pkgs.linux-firmware}/lib/firmware/mediatek/BT_RAM_CODE_MT7922_1_1_hdr.bin $out/lib/firmware/mediatek/
