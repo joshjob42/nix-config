@@ -66,8 +66,12 @@
                   cp ${pkgs.linux-firmware}/lib/firmware/mediatek/BT_RAM_CODE_MT7922_1_1_hdr.bin $out/lib/firmware/mediatek/
                 '')
               ];
-              boot.kernelModules = [ "mt7921e" ];
-              environment.systemPackages = with pkgs; [ iw iwd ];
+              # USB tethering as a rock-solid wired fallback (no ethernet port needed):
+              #   ipheth = iPhone, rndis_host/cdc_* = Android. usbmuxd pairs the iPhone.
+              # The installer's 99-ethernet-default-dhcp rule then DHCPs the interface.
+              services.usbmuxd.enable = true;
+              boot.kernelModules = [ "mt7921e" "ipheth" "rndis_host" "cdc_ether" "cdc_ncm" ];
+              environment.systemPackages = with pkgs; [ iw iwd libimobiledevice ];
               system.stateVersion = "26.05";
             })
           ];
