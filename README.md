@@ -1,7 +1,7 @@
 # geekbook14 — declarative NixOS
 
-NixOS for a Geekbook 14 (Intel Meteor Lake / Arc graphics), **dual-booting Windows**.
-Reproducible from this flake; pinned via `flake.lock`.
+NixOS for a Geekbook 14 (Intel Meteor Lake / Arc graphics), **dual-booting Windows**,
+installed **without a USB stick** via kexec. Reproducible from this flake; pinned by `flake.lock`.
 
 ## Layout
 
@@ -9,63 +9,80 @@ Reproducible from this flake; pinned via `flake.lock`.
 |------|------|
 | `flake.nix` | Inputs (nixpkgs 26.05, disko, home-manager) + the `geekbook14` system |
 | `hosts/geekbook14/configuration.nix` | System: COSMIC desktop, dual-boot GRUB, power mgmt, user |
-| `hosts/geekbook14/disko.nix` | **Leashed** disk layout — only touches `p6`/`p7`; Windows partitions are never named |
-| `hosts/geekbook14/hardware-configuration.nix` | Placeholder — regenerate during install |
+| `hosts/geekbook14/disko.nix` | **Leashed** disk layout — only `p6`/`p7` (by PARTUUID); Windows never named |
+| `hosts/geekbook14/hardware-configuration.nix` | Placeholder — regenerated during install |
 | `home/joshjob42.nix` | home-manager: fish, git/jj identity, portable CLI tooling |
+| `install.sh` | Guarded one-shot installer (run inside the kexec installer) |
 
-Validate any time without installing:
+Validate without installing:
 ```
 nix flake lock
 nix eval .#nixosConfigurations.geekbook14.config.system.build.toplevel.drvPath
 ```
 
-## Install (from a NixOS 26.05 live USB)
+---
 
-### ⚠️ Before you boot the installer
-1. **Secure Boot + BitLocker.** The stock NixOS kernel isn't signed, so you'll likely
-   disable Secure Boot in BIOS to boot it. If Windows has **BitLocker / device
-   encryption** on (common on Win11 laptops), changing Secure Boot can trigger a
-   **BitLocker recovery prompt** at the next Windows boot. So FIRST, in Windows:
-   either suspend BitLocker (`manage-bde -protectors -disable C:`) **or** save your
-   recovery key (account.microsoft.com/devices/recoverykey). Then disable Secure Boot.
-   (Later we can re-enable Secure Boot properly via `lanzaboote`.)
-2. **Make this repo reachable from the installer** — push it to GitHub, or copy the
-   folder onto the USB stick.
+## Install — no USB, via kexec
 
-### In the live environment
+> Secure Boot and BitLocker are already disabled on this machine, so there's no
+> Windows-recovery risk. The only destructive step is `disko`, which formats just
+> `p6` + `p7`. Windows lives on its own partitions and is never touched.
+
+### A. From the running CachyOS (last steps before the jump)
 ```sh
-# 1. Network (skip if on ethernet)
-nmtui
+# Build + stage the NixOS kexec installer (instant if already cached)
+TARBALL="$(nix build --no-link --print-out-paths \
+  github:nix-community/nixos-images#kexec-installer-nixos-stable)/nixos-kexec-installer-x86_64-linux.tar.gz"
+sudo tar -xf "$TARBALL" -C /root
 
-# 2. Get this repo (git clone your GitHub copy, or cp from the USB)
-cd /tmp && git clone <your-nix-config-url> nix-config && cd nix-config
+# Launch it. THIS REBOOTS the machine into a NixOS installer in RAM.
+# Your CachyOS session ends here — keep this guide open on another device.
+sudo /root/kexec/run
+```
+After ~30 s you land in a **NixOS installer**, auto-logged-in as `root` on the laptop
+console. (Prefer your iMac? In the console run `passwd` then `ip a` to get the address,
+and `ssh root@<that-ip>` from the Mac.)
 
-# 3. Partition + format ONLY p6 (root) and p7 (/boot). Windows is untouched.
-sudo nix --experimental-features "nix-command flakes" run github:nix-community/disko -- \
-  --mode destroy,format,mount --flake .#geekbook14
+### B. Inside the kexec installer
+```sh
+# 1. Network. Wired = automatic. Wi-Fi:
+iwctl
+#    > station wlan0 scan
+#    > station wlan0 get-networks
+#    > station wlan0 connect "<YOUR-SSID>"
+#    > exit
+ping -c1 github.com    # confirm you're online
 
-# 4. Capture the REAL hardware profile (filesystems come from disko, so skip them)
-sudo nixos-generate-config --no-filesystems --root /mnt --show-hardware-config \
-  > hosts/geekbook14/hardware-configuration.nix
+# 2. Grab this repo (public, no auth)
+git clone https://github.com/joshjob42/nix-config /tmp/nix-config
+cd /tmp/nix-config
 
-# 5. Install (prompts for the root password)
-sudo nixos-install --flake .#geekbook14
+# 3. Run the guarded installer (it shows you the partitions and asks before erasing)
+bash install.sh
 
-# 6. Set your user password before rebooting
-sudo nixos-enter --root /mnt -c 'passwd joshjob42'
-
-# 7. Reboot, pull the USB
+# 4. When it finishes:
 reboot
 ```
 
-### First boot
-- GRUB shows **NixOS** and **Windows** (os-prober). Pick NixOS → log in via cosmic-greeter.
-- After editing this config: `nrs`  (= `sudo nixos-rebuild switch --flake ~/nix-config#geekbook14`).
+`install.sh` does, in order: `disko` formats `p6`/`p7` → regenerates the hardware
+profile → `nixos-install` → sets your user password. If you'd rather run it by hand,
+the four commands are listed inside that script.
+
+### C. First boot
+- The **GRUB** menu shows **NixOS** and **Windows** (auto-detected). Pick NixOS.
+- Log in via `cosmic-greeter` → COSMIC desktop.
+- After editing this config later: `nrs` (= `sudo nixos-rebuild switch --flake ~/nix-config#geekbook14`).
+
+### If kexec misbehaves
+You're not stuck: just reboot. Limine drops you back into CachyOS exactly as before
+(nothing is formatted until you type `ERASE` in `install.sh`). Windows is safe throughout.
+
+---
 
 ## Follow-ups (after first successful boot)
 - [ ] **CachyOS kernel** via `chaotic-nyx` — uncomment the input in `flake.nix`, add its
       module, set `boot.kernelPackages = pkgs.linuxPackages_cachyos;`.
-- [ ] **GUI dotfiles** — port nvim (LazyVim), kitty, zellij, btop, ncspot drop-ins into `home/`.
+- [ ] **GUI dotfiles** — port nvim (LazyVim), kitty, zellij, btop, ncspot from the
+      `joshjob42/dotfiles` repo into `home/`.
 - [ ] **Secrets** — `sops-nix` or `op inject` to populate `~/.config/secrets.env`.
-- [ ] **Push** this repo to GitHub (`joshjob42/nix-config`).
 - [ ] (optional) **Secure Boot** via `lanzaboote`.
