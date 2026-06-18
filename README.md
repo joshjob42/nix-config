@@ -1,17 +1,24 @@
-# geekbook14 — declarative NixOS
+# geekbook14 — declarative NixOS (public base)
 
 NixOS for a Geekbook 14 (Intel Meteor Lake / Arc graphics), **dual-booting Windows**,
 installed **without a USB stick** via kexec. Reproducible from this flake; pinned by `flake.lock`.
+
+> **This is the public *base*** — a bootable COSMIC desktop + 1Password + git identity,
+> enough to install and authenticate. The full setup (all apps, GUI dotfiles, Tailscale,
+> kanata, Claude Code, the 1Password secrets workflow) lives in a **private** repo,
+> `nix-config-private`, which pulls this base in as a flake input and layers on top.
+> No secrets live in either repo — only `op://` references, kept in the private one.
+> See **[Full config (private)](#full-config-private)**.
 
 ## Layout
 
 | File | Role |
 |------|------|
-| `flake.nix` | Inputs (nixpkgs 26.05, disko, home-manager) + the `geekbook14` system |
-| `hosts/geekbook14/configuration.nix` | System: COSMIC desktop, dual-boot GRUB, power mgmt, user |
+| `flake.nix` | Inputs (nixpkgs 26.05, disko, home-manager, lanzaboote) + `nixosModules.base` + the `geekbook14` system + the kexec installer |
+| `hosts/geekbook14/configuration.nix` | Base system: boot/Secure Boot (lanzaboote), COSMIC, 1Password, networking, power mgmt, user |
 | `hosts/geekbook14/disko.nix` | **Leashed** disk layout — only `p6`/`p7` (by PARTUUID); Windows never named |
 | `hosts/geekbook14/hardware-configuration.nix` | Placeholder — regenerated during install |
-| `home/joshjob42.nix` | home-manager: fish, git/jj identity, portable CLI tooling |
+| `home/joshjob42.nix` | Minimal home: fish + secrets.env loader + git/jj/gh identity |
 | `install.sh` | Guarded one-shot installer (run inside the kexec installer) |
 
 Validate without installing:
@@ -75,13 +82,34 @@ profile → `nixos-install` → sets your user password. If you'd rather run it 
 the four commands are listed inside that script.
 
 ### C. First boot
-- The **GRUB** menu shows **NixOS** and **Windows** (auto-detected). Pick NixOS.
-- Log in via `cosmic-greeter` → COSMIC desktop.
-- After editing this config later: `nrs` (= `sudo nixos-rebuild switch --flake ~/nix-config#geekbook14`).
+- Pick **NixOS** at the boot menu (Windows boots from the firmware boot-key — see the
+  Secure Boot notes). Log in via `cosmic-greeter` → COSMIC desktop.
+- You now have the **base** system. To get the full setup, follow
+  **[Full config (private)](#full-config-private)** below.
+- To rebuild the base itself later: `sudo nixos-rebuild switch --flake ~/nix-config#geekbook14`.
 
 ### If kexec misbehaves
 You're not stuck: just reboot. Limine drops you back into CachyOS exactly as before
 (nothing is formatted until you type `ERASE` in `install.sh`). Windows is safe throughout.
+
+---
+
+## Full config (private)
+
+The base above is deliberately minimal. Everything else lives in `nix-config-private`,
+which adds it as a flake input (`base.url = "github:joshjob42/nix-config"` — public, so
+no auth to fetch) and layers the full system + home on top. Bootstrap, once booted into
+the base:
+
+```sh
+gh auth login                                   # authenticate to GitHub (browser)
+git clone https://github.com/joshjob42/nix-config-private ~/nix-config-private
+sudo nixos-rebuild switch --flake ~/nix-config-private#geekbook14
+```
+
+Then sign into 1Password and `secrets-render` to populate `~/.config/secrets.env`.
+Day-to-day rebuilds run from the private flake (`nrs` is aliased to it there); the public
+base comes in as a pinned input and is bumped with `nix flake update base`.
 
 ---
 
@@ -90,14 +118,13 @@ You're not stuck: just reboot. Limine drops you back into CachyOS exactly as bef
       under KMS; fixed by `boot.kernelPackages = pkgs.linuxPackages_latest` (7.0.x) + i915.
 - [ ] **CachyOS kernel** — evaluated `chaotic-nyx` (archived) and `xddxdd/nix-cachyos-kernel`;
       chose mainline `linuxPackages_latest` instead (fixes the panel, no third-party cache).
-- [x] **GUI dotfiles** — kitty / nvim (LazyVim) / zellij / btop / ncspot ported into
-      `home/gui.nix` (+ vendored configs in `home/dotfiles/`).
 - [x] **Secure Boot** via `lanzaboote` — see firmware notes below.
-- [x] **Secrets** — `op inject` from 1Password into `~/.config/secrets.env` (`secrets-render`).
-- Also added: **Helium** browser (`oxcl/nix-flake-helium-browser`), **Tailscale**, Claude Code.
-- ~~Fingerprint~~ — `hosts/geekbook14/fingerprint.nix` fully packages the Focaltech
-      FTE4800 driver stack (out-of-tree module + proprietary libfprint blob + gusb
-      symbol-version surgery), but the sensor won't initialize (unsupported silicon).
+- [x] **GUI dotfiles / apps / secrets** — moved to the **private** repo: kitty / nvim
+      (LazyVim) / zellij / btop / ncspot, **Helium** browser, **Tailscale**, **Claude Code**,
+      kanata (keyboard remap + Greek/Math), and the `op inject` secrets workflow.
+- ~~Fingerprint~~ — `nix-config-private/modules/fingerprint.nix` fully packages the
+      Focaltech FTE4800 driver stack (out-of-tree module + proprietary libfprint blob +
+      gusb symbol-version surgery), but the sensor won't initialize (unsupported silicon).
       Not imported; see that file's STATUS header. Kept as groundwork.
 
 ### Secure Boot (lanzaboote) — geekbook14 firmware quirks

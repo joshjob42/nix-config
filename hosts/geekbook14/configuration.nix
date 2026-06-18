@@ -7,9 +7,6 @@
   imports = [
     ./hardware-configuration.nix
     ./disko.nix
-    ./kanata.nix
-    # ./fingerprint.nix  # FTE4800 driver fully packaged but sensor won't init
-                         # (unsupported silicon); see that file's STATUS header.
   ];
 
   # --- Boot / Secure Boot (lanzaboote) ---------------------------------------
@@ -61,25 +58,13 @@
   # Allow unfree packages (1Password CLI + desktop app, and anything else later).
   # (home-manager shares this nixpkgs config via useGlobalPkgs.)
   nixpkgs.config.allowUnfree = true;
-  # Claude Code is installed in home/joshjob42.nix straight from the sadjow
-  # flake's prebuilt package (built against ITS pinned nixpkgs, so the cachix
-  # below is a hit). We avoid its overlay on purpose: the overlay would rebuild
-  # claude-code against our nixpkgs and miss the cache.
 
   # --- Nix / flakes ----------------------------------------------------------
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   nix.settings.auto-optimise-store = true;
-  # A trusted user can use binary caches a flake requests (its `nixConfig`
-  # extra-substituters) WITHOUT the interactive y/N prompt. cache.nixos.org is
-  # always trusted. When we add the CachyOS kernel later, the chaotic-nyx NixOS
-  # module wires up its own signed cache automatically — so no prompt, and the
-  # kernel is fetched prebuilt instead of compiled.
+  # Trusted users may use flake-requested binary caches without the y/N prompt
+  # (the private config's claude-code cachix relies on this).
   nix.settings.trusted-users = [ "root" "joshjob42" ];
-  # Binary cache for the Claude Code flake (prebuilt; appended to cache.nixos.org).
-  nix.settings.extra-substituters = [ "https://claude-code.cachix.org" ];
-  nix.settings.extra-trusted-public-keys = [
-    "claude-code.cachix.org-1:YeXf2aNu7UTX8Vwrze0za1WEDS+4DuI2kVeWEE4fsRk="
-  ];
   nix.gc = {
     automatic = true;
     dates = "weekly";
@@ -89,18 +74,6 @@
   # --- Networking ------------------------------------------------------------
   networking.hostName = "geekbook14";
   networking.networkmanager.enable = true;
-
-  # --- Tailscale (mesh VPN to other systems) ---------------------------------
-  # Installs tailscaled + the `tailscale` CLI. After the rebuild, authenticate
-  # once with `sudo tailscale up` (opens a browser login). Routing features =
-  # "client" lets this host use exit nodes and accept advertised subnet routes.
-  services.tailscale = {
-    enable = true;
-    useRoutingFeatures = "client";
-  };
-  # Reach services on this host over the tailnet without per-port firewall rules
-  # (personal tailnet). Tighten or drop this if you want stricter inbound rules.
-  networking.firewall.trustedInterfaces = [ "tailscale0" ];
 
   # --- Locale / time ---------------------------------------------------------
   time.timeZone = "America/Los_Angeles";
@@ -124,9 +97,6 @@
   # --- Desktop: COSMIC (Wayland) ---------------------------------------------
   services.desktopManager.cosmic.enable = true;
   services.displayManager.cosmic-greeter.enable = true;
-
-  # --- Browser: Helium (ungoogled-chromium fork; via helium-flake) -----------
-  programs.helium.enable = true;
 
   # --- 1Password (secrets via `op inject`) -----------------------------------
   # CLI (op) + desktop app with CLI<->app integration, so `op` unlocks through

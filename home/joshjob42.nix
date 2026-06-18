@@ -1,53 +1,19 @@
-# Home-manager config for joshjob42, ported from the macOS (nix-darwin) dotfiles.
-# First cut: portable CLI tooling + shell/git/jj identity. The big GUI config
-# drop-ins (nvim/kitty/zellij/etc.) are a deliberate follow-up step.
-{ config, pkgs, lib, inputs, ... }:
+# Minimal base home for joshjob42 (public bootstrap): shell + git/jj/gh identity,
+# enough to authenticate and clone the private config. The full tool set, GUI
+# dotfiles, and secrets workflow live in nix-config-private/home/full.nix, which
+# is layered on top of this.
+{ config, pkgs, lib, ... }:
 {
-  imports = [ ./gui.nix ]; # GUI/desktop dotfiles (kitty, nvim, zellij, btop, ncspot)
-
   home.stateVersion = "26.05";
 
-  # --- Portable CLI packages (module-managed tools live under programs.* below) ---
-  # Claude Code, straight from the sadjow flake's prebuilt package (cachix hit;
-  # newer than nixpkgs'). Not via its overlay — that would rebuild it locally.
-  home.packages = [ inputs.claude-code.packages.x86_64-linux.default ] ++ (with pkgs; [
-    ripgrep fd jq lazygit
-    duf tree dust procs broot
-    tmux yt-dlp epr mosh # ncspot now managed via programs.ncspot in gui.nix
-    neovim
-    git-lfs shellcheck wget pandoc typst poppler w3m sox rclone monolith qrencode htop
-    kanata
-    go rustup zig uv
-    cmake ninja gnumake
-    texlive.combined.scheme-medium
-  ]);
-
-  # --- PATH additions (portable subset; brew/Applications paths dropped) ---
-  home.sessionPath = [
-    "$HOME/.local/bin"
-    "$HOME/.cargo/bin"
-    "$HOME/.bun/bin"
-  ];
-
-  # --- Non-secret env exports (real keys come from ~/.config/secrets.env) ---
-  home.sessionVariables = {
-    BUN_INSTALL = "$HOME/.bun";
-    LETTA_BASE_URL = "http://localhost:8283";
-    ENABLE_LSP_TOOL = "1";
-  };
-
-  # --- Shell ---
   programs.fish = {
     enable = true;
-    shellAliases = {
-      # was `drs` (darwin-rebuild) — now rebuilds this NixOS host from the flake
-      nrs = "sudo nixos-rebuild switch --flake ~/nix-config#geekbook14";
-    };
     interactiveShellInit = ''
       # Fix delete key
       bind \177 backward-delete-char
 
-      # Load secrets if present (KEY=value, one per line) — same contract as macOS
+      # Load secrets if present (KEY=value, one per line). The file is rendered
+      # by the private config's `secrets-render`; harmless if absent.
       if test -f $HOME/.config/secrets.env
         while read -l line
           string match -qr '^\s*#' -- $line; and continue
@@ -58,7 +24,7 @@
     '';
   };
 
-  # --- Git ---
+  # Git / Jujutsu / GitHub identity (needed to authenticate + clone the private repo).
   programs.git = {
     enable = true;
     settings = {
@@ -68,12 +34,6 @@
     };
     ignores = [ "**/.claude/settings.local.json" ];
   };
-  programs.delta = {
-    enable = true;
-    enableGitIntegration = true;
-  };
-
-  # --- Jujutsu ---
   programs.jujutsu = {
     enable = true;
     settings.user = {
@@ -81,43 +41,12 @@
       email = "joshjob42@gmail.com";
     };
   };
-
-  # --- GitHub CLI ---
   programs.gh = {
     enable = true;
     settings = {
       git_protocol = "https";
       aliases.co = "pr checkout";
     };
-  };
-
-  # --- Shell tooling (modules provide binary + fish integration) ---
-  programs.starship.enable = true;
-  programs.direnv = {
-    enable = true;
-    nix-direnv.enable = true;
-  };
-  programs.fzf.enable = true;
-  programs.zoxide.enable = true;
-  programs.bat.enable = true;
-  programs.eza.enable = true;
-  programs.tealdeer.enable = true;
-  programs.btop.enable = true;
-  programs.zellij.enable = true; # raw KDL config ported later; no shell auto-start
-
-  # --- Secrets: render ~/.config/secrets.env from 1Password (op inject) ---
-  # The template (op:// references only, no secrets) is committed and lands at
-  # ~/.config/secrets.env.tpl; the rendered secrets.env is NOT in git. After
-  # signing into 1Password (`op signin` or the desktop app), run `secrets-render`.
-  # fish then auto-loads ~/.config/secrets.env at startup (see interactiveShellInit).
-  xdg.configFile."secrets.env.tpl".source = ./dotfiles/secrets.env.tpl;
-  programs.fish.functions.secrets-render = {
-    description = "Render ~/.config/secrets.env from 1Password via op inject";
-    body = ''
-      op inject --force --in-file $HOME/.config/secrets.env.tpl --out-file $HOME/.config/secrets.env
-      and chmod 600 $HOME/.config/secrets.env
-      and echo "rendered ~/.config/secrets.env (restart fish or re-source to load)"
-    '';
   };
 
   programs.home-manager.enable = true;

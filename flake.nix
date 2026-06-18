@@ -1,15 +1,5 @@
 {
-  description = "geekbook14 — declarative NixOS (dual-boot alongside Windows)";
-
-  # Make the Claude Code flake's binary cache available at build time (so
-  # `nixos-rebuild` fetches claude-code prebuilt instead of building it). Honored
-  # for trusted users (root/joshjob42); also persisted in nix.settings.
-  nixConfig = {
-    extra-substituters = [ "https://claude-code.cachix.org" ];
-    extra-trusted-public-keys = [
-      "claude-code.cachix.org-1:YeXf2aNu7UTX8Vwrze0za1WEDS+4DuI2kVeWEE4fsRk="
-    ];
-  };
+  description = "geekbook14 — public base (bootstrap) NixOS config";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
@@ -21,52 +11,39 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
     # Used only to build a Wi-Fi-capable kexec installer (see packages.kexec-wifi).
-    # We import only its module and evaluate it under our own nixpkgs, so it has
-    # no nixpkgs input of its own to pin here.
     nixos-images.url = "github:nix-community/nixos-images";
-
-    # Helium browser (ungoogled-chromium fork). Not in nixpkgs -- upstream ships
-    # only .deb releases, so this community flake builds it from the official
-    # .deb (patchelf, no compile). Provides a NixOS module: programs.helium.
-    helium-flake.url = "github:oxcl/nix-flake-helium-browser";
-    helium-flake.inputs.nixpkgs.follows = "nixpkgs";
 
     # Secure Boot for NixOS. Installs a signed systemd-boot and signs every
     # generation with our own enrolled keys (see boot.lanzaboote).
     lanzaboote.url = "github:nix-community/lanzaboote/v1.0.0";
     lanzaboote.inputs.nixpkgs.follows = "nixpkgs";
-
-    # Claude Code CLI — tracked closely upstream (newer than nixpkgs') with its
-    # own cachix. Intentionally does NOT follow nixpkgs (keeps binary-cache
-    # hits). Its overlay provides pkgs.claude-code.
-    claude-code.url = "github:sadjow/claude-code-nix";
-
-    # CachyOS kernel + optimized binary cache for NixOS.
-    # Wired up but NOT enabled yet — we turn this on AFTER the first boot.
-    # chaotic.url = "github:chaotic-cx/nyx/nyxpkgs-unstable";
   };
 
-  outputs = { self, nixpkgs, disko, home-manager, nixos-images, ... }@inputs:
+  outputs = { self, nixpkgs, disko, home-manager, nixos-images, lanzaboote, ... }@inputs:
     let
       system = "x86_64-linux";
+      # The base system + minimal home. Exposed as nixosModules.base so the
+      # private full config (github:joshjob42/nix-config-private) can layer on
+      # top; also built standalone below as the bootstrap install target.
+      baseModules = [
+        disko.nixosModules.disko
+        home-manager.nixosModules.home-manager
+        lanzaboote.nixosModules.lanzaboote
+        ./hosts/geekbook14/configuration.nix
+        {
+          home-manager.useGlobalPkgs = true;
+          home-manager.useUserPackages = true;
+          home-manager.users.joshjob42 = import ./home/joshjob42.nix;
+        }
+      ];
     in
     {
+      nixosModules.base = { imports = baseModules; };
+
       nixosConfigurations.geekbook14 = nixpkgs.lib.nixosSystem {
         inherit system;
         specialArgs = { inherit inputs; };
-        modules = [
-          disko.nixosModules.disko
-          home-manager.nixosModules.home-manager
-          inputs.helium-flake.nixosModules.default
-          inputs.lanzaboote.nixosModules.lanzaboote
-          ./hosts/geekbook14/configuration.nix
-          {
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.extraSpecialArgs = { inherit inputs; };
-            home-manager.users.joshjob42 = import ./home/joshjob42.nix;
-          }
-        ];
+        modules = baseModules;
       };
 
       # Wi-Fi-capable kexec installer for the no-USB install on a Wi-Fi-only laptop.
@@ -106,7 +83,6 @@
               ];
               # USB tethering as a rock-solid wired fallback (no ethernet port needed):
               #   ipheth = iPhone, rndis_host/cdc_* = Android. usbmuxd pairs the iPhone.
-              # The installer's 99-ethernet-default-dhcp rule then DHCPs the interface.
               services.usbmuxd.enable = true;
               boot.kernelModules = [ "mt7921e" "ipheth" "rndis_host" "cdc_ether" "cdc_ncm" ];
               environment.systemPackages = with pkgs; [ iw iwd libimobiledevice ];
