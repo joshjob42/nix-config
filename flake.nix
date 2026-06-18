@@ -21,6 +21,11 @@
     helium-flake.url = "github:oxcl/nix-flake-helium-browser";
     helium-flake.inputs.nixpkgs.follows = "nixpkgs";
 
+    # Secure Boot for NixOS. Installs a signed systemd-boot and signs every
+    # generation with our own enrolled keys (see boot.lanzaboote).
+    lanzaboote.url = "github:nix-community/lanzaboote/v1.0.0";
+    lanzaboote.inputs.nixpkgs.follows = "nixpkgs";
+
     # CachyOS kernel + optimized binary cache for NixOS.
     # Wired up but NOT enabled yet — we turn this on AFTER the first boot.
     # chaotic.url = "github:chaotic-cx/nyx/nyxpkgs-unstable";
@@ -38,6 +43,7 @@
           disko.nixosModules.disko
           home-manager.nixosModules.home-manager
           inputs.helium-flake.nixosModules.default
+          inputs.lanzaboote.nixosModules.lanzaboote
           ./hosts/geekbook14/configuration.nix
           {
             home-manager.useGlobalPkgs = true;

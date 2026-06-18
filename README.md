@@ -86,9 +86,23 @@ You're not stuck: just reboot. Limine drops you back into CachyOS exactly as bef
 ---
 
 ## Follow-ups (after first successful boot)
-- [ ] **CachyOS kernel** via `chaotic-nyx` — uncomment the input in `flake.nix`, add its
-      module, set `boot.kernelPackages = pkgs.linuxPackages_cachyos;`.
-- [ ] **GUI dotfiles** — port nvim (LazyVim), kitty, zellij, btop, ncspot from the
-      `joshjob42/dotfiles` repo into `home/`.
+- [x] **Display** — the stock 6.18.35 kernel black-screened this Meteor Lake eDP panel
+      under KMS; fixed by `boot.kernelPackages = pkgs.linuxPackages_latest` (7.0.x) + i915.
+- [ ] **CachyOS kernel** — evaluated `chaotic-nyx` (archived) and `xddxdd/nix-cachyos-kernel`;
+      chose mainline `linuxPackages_latest` instead (fixes the panel, no third-party cache).
+- [x] **GUI dotfiles** — kitty / nvim (LazyVim) / zellij / btop / ncspot ported into
+      `home/gui.nix` (+ vendored configs in `home/dotfiles/`).
+- [x] **Secure Boot** via `lanzaboote` — see firmware notes below.
 - [ ] **Secrets** — `sops-nix` or `op inject` to populate `~/.config/secrets.env`.
-- [ ] (optional) **Secure Boot** via `lanzaboote`.
+- Also added: **Helium** browser (`oxcl/nix-flake-helium-browser`), **Tailscale**.
+
+### Secure Boot (lanzaboote) — geekbook14 firmware quirks
+This GEEKOM's AMI firmware is finicky; the setup that works:
+- It **drops** lanzaboote's "Linux Boot Manager" EFI entry, and instead auto-creates a
+  fallback-path entry (`\EFI\BOOT\BOOTX64.EFI` on `p7`, shown as "UEFI OS"). Keep that
+  entry first in `efibootmgr` BootOrder. The old GRUB `NixOS-boot` entry was deleted.
+- Enroll/enable keys with Secure Boot Mode = **Custom**. **Standard mode reloads the
+  firmware's factory keys** and breaks trust in the lanzaboote-signed bootloader.
+  Procedure: BIOS → Custom mode → erase keys (Setup Mode) → boot →
+  `sudo sbctl enroll-keys --microsoft` → reboot → BIOS (still Custom) → enable Secure Boot.
+  Verify with `sudo sbctl status` (`Secure Boot: ✓ Enabled`, `Vendor Keys: microsoft`).

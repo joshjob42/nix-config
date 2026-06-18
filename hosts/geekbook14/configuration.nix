@@ -9,15 +9,25 @@
     ./disko.nix
   ];
 
-  # --- Boot / dual-boot with Windows -----------------------------------------
-  # GRUB on the NixOS ESP (p7). useOSProber scans the other partitions and
-  # adds a "Windows" entry automatically. ntfs support lets os-prober mount it.
-  boot.loader.grub = {
+  # --- Boot / Secure Boot (lanzaboote) ---------------------------------------
+  # Secure Boot via lanzaboote: it installs a signed systemd-boot and signs every
+  # generation with the keys in pkiBundle (/var/lib/sbctl, created once with
+  # `sbctl create-keys`). GRUB is gone -- it can't be Secure-Booted on NixOS, so
+  # we declare systemd-boot then force it off and let lanzaboote take its slot.
+  #
+  # Windows lives on its OWN ESP (p1); systemd-boot only scans the ESP it manages
+  # (p7), so Windows is intentionally NOT in this menu. Boot it from the firmware
+  # boot-menu key at power-on ("Windows Boot Manager"); its EFI entry is untouched.
+  boot.loader.systemd-boot.enable = lib.mkForce false;
+  boot.loader.systemd-boot.configurationLimit = 10;
+  # Boot straight into the default generation. The menu lists every kept
+  # generation (up to configurationLimit) PLUS each one's specialisations, hence
+  # the long list; this 1s window just hides it. Hold a key at power-on (or bump
+  # this timeout) to reach the menu / nomodeset-rescue.
+  boot.loader.timeout = 1;
+  boot.lanzaboote = {
     enable = true;
-    efiSupport = true;
-    device = "nodev";
-    useOSProber = true;
-    configurationLimit = 10;
+    pkiBundle = "/var/lib/sbctl";
   };
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.efi.efiSysMountPoint = "/boot";
@@ -134,6 +144,7 @@
     vim
     wget
     pciutils
+    sbctl # Secure Boot key management (create/enroll/verify; see boot.lanzaboote)
   ];
 
   system.stateVersion = "26.05";
