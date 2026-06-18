@@ -1,6 +1,16 @@
 {
   description = "geekbook14 — declarative NixOS (dual-boot alongside Windows)";
 
+  # Make the Claude Code flake's binary cache available at build time (so
+  # `nixos-rebuild` fetches claude-code prebuilt instead of building it). Honored
+  # for trusted users (root/joshjob42); also persisted in nix.settings.
+  nixConfig = {
+    extra-substituters = [ "https://claude-code.cachix.org" ];
+    extra-trusted-public-keys = [
+      "claude-code.cachix.org-1:YeXf2aNu7UTX8Vwrze0za1WEDS+4DuI2kVeWEE4fsRk="
+    ];
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
@@ -25,6 +35,11 @@
     # generation with our own enrolled keys (see boot.lanzaboote).
     lanzaboote.url = "github:nix-community/lanzaboote/v1.0.0";
     lanzaboote.inputs.nixpkgs.follows = "nixpkgs";
+
+    # Claude Code CLI — tracked closely upstream (newer than nixpkgs') with its
+    # own cachix. Intentionally does NOT follow nixpkgs (keeps binary-cache
+    # hits). Its overlay provides pkgs.claude-code.
+    claude-code.url = "github:sadjow/claude-code-nix";
 
     # CachyOS kernel + optimized binary cache for NixOS.
     # Wired up but NOT enabled yet — we turn this on AFTER the first boot.

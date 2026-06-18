@@ -1,14 +1,16 @@
 # Home-manager config for joshjob42, ported from the macOS (nix-darwin) dotfiles.
 # First cut: portable CLI tooling + shell/git/jj identity. The big GUI config
 # drop-ins (nvim/kitty/zellij/etc.) are a deliberate follow-up step.
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, inputs, ... }:
 {
   imports = [ ./gui.nix ]; # GUI/desktop dotfiles (kitty, nvim, zellij, btop, ncspot)
 
   home.stateVersion = "26.05";
 
   # --- Portable CLI packages (module-managed tools live under programs.* below) ---
-  home.packages = with pkgs; [
+  # Claude Code, straight from the sadjow flake's prebuilt package (cachix hit;
+  # newer than nixpkgs'). Not via its overlay — that would rebuild it locally.
+  home.packages = [ inputs.claude-code.packages.x86_64-linux.default ] ++ (with pkgs; [
     ripgrep fd jq lazygit
     duf tree dust procs broot
     tmux yt-dlp epr mosh # ncspot now managed via programs.ncspot in gui.nix
@@ -18,7 +20,7 @@
     go rustup zig uv
     cmake ninja gnumake
     texlive.combined.scheme-medium
-  ];
+  ]);
 
   # --- PATH additions (portable subset; brew/Applications paths dropped) ---
   home.sessionPath = [
@@ -102,6 +104,21 @@
   programs.tealdeer.enable = true;
   programs.btop.enable = true;
   programs.zellij.enable = true; # raw KDL config ported later; no shell auto-start
+
+  # --- Secrets: render ~/.config/secrets.env from 1Password (op inject) ---
+  # The template (op:// references only, no secrets) is committed and lands at
+  # ~/.config/secrets.env.tpl; the rendered secrets.env is NOT in git. After
+  # signing into 1Password (`op signin` or the desktop app), run `secrets-render`.
+  # fish then auto-loads ~/.config/secrets.env at startup (see interactiveShellInit).
+  xdg.configFile."secrets.env.tpl".source = ./dotfiles/secrets.env.tpl;
+  programs.fish.functions.secrets-render = {
+    description = "Render ~/.config/secrets.env from 1Password via op inject";
+    body = ''
+      op inject --force --in-file $HOME/.config/secrets.env.tpl --out-file $HOME/.config/secrets.env
+      and chmod 600 $HOME/.config/secrets.env
+      and echo "rendered ~/.config/secrets.env (restart fish or re-source to load)"
+    '';
+  };
 
   programs.home-manager.enable = true;
 }

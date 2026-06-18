@@ -55,6 +55,14 @@
   # 26.05's default kernel advances to >= 7.0 this line can likely be dropped.
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
+  # Allow unfree packages (1Password CLI + desktop app, and anything else later).
+  # (home-manager shares this nixpkgs config via useGlobalPkgs.)
+  nixpkgs.config.allowUnfree = true;
+  # Claude Code is installed in home/joshjob42.nix straight from the sadjow
+  # flake's prebuilt package (built against ITS pinned nixpkgs, so the cachix
+  # below is a hit). We avoid its overlay on purpose: the overlay would rebuild
+  # claude-code against our nixpkgs and miss the cache.
+
   # --- Nix / flakes ----------------------------------------------------------
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   nix.settings.auto-optimise-store = true;
@@ -64,6 +72,11 @@
   # module wires up its own signed cache automatically — so no prompt, and the
   # kernel is fetched prebuilt instead of compiled.
   nix.settings.trusted-users = [ "root" "joshjob42" ];
+  # Binary cache for the Claude Code flake (prebuilt; appended to cache.nixos.org).
+  nix.settings.extra-substituters = [ "https://claude-code.cachix.org" ];
+  nix.settings.extra-trusted-public-keys = [
+    "claude-code.cachix.org-1:YeXf2aNu7UTX8Vwrze0za1WEDS+4DuI2kVeWEE4fsRk="
+  ];
   nix.gc = {
     automatic = true;
     dates = "weekly";
@@ -111,6 +124,16 @@
 
   # --- Browser: Helium (ungoogled-chromium fork; via helium-flake) -----------
   programs.helium.enable = true;
+
+  # --- 1Password (secrets via `op inject`) -----------------------------------
+  # CLI (op) + desktop app with CLI<->app integration, so `op` unlocks through
+  # the app's system auth instead of a manual session token. Used to render
+  # ~/.config/secrets.env from a template (see home config: `secrets-render`).
+  programs._1password.enable = true;
+  programs._1password-gui = {
+    enable = true;
+    polkitPolicyOwners = [ "joshjob42" ];
+  };
 
   # --- Power management (laptop) ---------------------------------------------
   services.power-profiles-daemon.enable = true; # COSMIC's power panel hooks into this
