@@ -59,11 +59,10 @@ in
       ExecStart = pkgs.writeShellScript "kanata-typer" ''
         fifo="$XDG_RUNTIME_DIR/kanata-type.fifo"
         ${pkgs.coreutils}/bin/rm -f "$fifo"
-        ${pkgs.coreutils}/bin/mkfifo "$fifo"
-        # World-writable so the kanata service (root, but stripped of
-        # CAP_DAC_OVERRIDE by its sandbox) can write without owning the FIFO.
-        # Owner-only read: only this typer consumes it.
-        ${pkgs.coreutils}/bin/chmod 622 "$fifo"
+        # Owner-only (600): only this typer (the owner) and the kanata service
+        # (root, via CAP_DAC_OVERRIDE) can touch it -- no other local process
+        # can inject keystrokes.
+        ${pkgs.coreutils}/bin/mkfifo -m 600 "$fifo"
         # Hold the FIFO open read-write so writers (kanata-emit) never block.
         exec 3<>"$fifo"
         while IFS= read -r ch <&3; do
