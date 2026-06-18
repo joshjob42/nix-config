@@ -15,6 +15,12 @@
     # no nixpkgs input of its own to pin here.
     nixos-images.url = "github:nix-community/nixos-images";
 
+    # Helium browser (ungoogled-chromium fork). Not in nixpkgs -- upstream ships
+    # only .deb releases, so this community flake builds it from the official
+    # .deb (patchelf, no compile). Provides a NixOS module: programs.helium.
+    helium-flake.url = "github:oxcl/nix-flake-helium-browser";
+    helium-flake.inputs.nixpkgs.follows = "nixpkgs";
+
     # CachyOS kernel + optimized binary cache for NixOS.
     # Wired up but NOT enabled yet — we turn this on AFTER the first boot.
     # chaotic.url = "github:chaotic-cx/nyx/nyxpkgs-unstable";
@@ -31,6 +37,7 @@
         modules = [
           disko.nixosModules.disko
           home-manager.nixosModules.home-manager
+          inputs.helium-flake.nixosModules.default
           ./hosts/geekbook14/configuration.nix
           {
             home-manager.useGlobalPkgs = true;

@@ -64,6 +64,18 @@
   networking.hostName = "geekbook14";
   networking.networkmanager.enable = true;
 
+  # --- Tailscale (mesh VPN to other systems) ---------------------------------
+  # Installs tailscaled + the `tailscale` CLI. After the rebuild, authenticate
+  # once with `sudo tailscale up` (opens a browser login). Routing features =
+  # "client" lets this host use exit nodes and accept advertised subnet routes.
+  services.tailscale = {
+    enable = true;
+    useRoutingFeatures = "client";
+  };
+  # Reach services on this host over the tailnet without per-port firewall rules
+  # (personal tailnet). Tighten or drop this if you want stricter inbound rules.
+  networking.firewall.trustedInterfaces = [ "tailscale0" ];
+
   # --- Locale / time ---------------------------------------------------------
   time.timeZone = "America/Los_Angeles";
   i18n.defaultLocale = "en_US.UTF-8";
@@ -86,6 +98,9 @@
   # --- Desktop: COSMIC (Wayland) ---------------------------------------------
   services.desktopManager.cosmic.enable = true;
   services.displayManager.cosmic-greeter.enable = true;
+
+  # --- Browser: Helium (ungoogled-chromium fork; via helium-flake) -----------
+  programs.helium.enable = true;
 
   # --- Power management (laptop) ---------------------------------------------
   services.power-profiles-daemon.enable = true; # COSMIC's power panel hooks into this

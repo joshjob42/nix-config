@@ -3,13 +3,15 @@
 # drop-ins (nvim/kitty/zellij/etc.) are a deliberate follow-up step.
 { config, pkgs, lib, ... }:
 {
+  imports = [ ./gui.nix ]; # GUI/desktop dotfiles (kitty, nvim, zellij, btop, ncspot)
+
   home.stateVersion = "26.05";
 
   # --- Portable CLI packages (module-managed tools live under programs.* below) ---
   home.packages = with pkgs; [
     ripgrep fd jq lazygit
     duf tree dust procs broot
-    tmux ncspot yt-dlp epr mosh
+    tmux yt-dlp epr mosh # ncspot now managed via programs.ncspot in gui.nix
     neovim
     git-lfs shellcheck wget pandoc typst poppler w3m sox rclone monolith qrencode htop
     kanata
