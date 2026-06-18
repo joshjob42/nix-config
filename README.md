@@ -93,8 +93,12 @@ You're not stuck: just reboot. Limine drops you back into CachyOS exactly as bef
 - [x] **GUI dotfiles** — kitty / nvim (LazyVim) / zellij / btop / ncspot ported into
       `home/gui.nix` (+ vendored configs in `home/dotfiles/`).
 - [x] **Secure Boot** via `lanzaboote` — see firmware notes below.
-- [ ] **Secrets** — `sops-nix` or `op inject` to populate `~/.config/secrets.env`.
-- Also added: **Helium** browser (`oxcl/nix-flake-helium-browser`), **Tailscale**.
+- [x] **Secrets** — `op inject` from 1Password into `~/.config/secrets.env` (`secrets-render`).
+- Also added: **Helium** browser (`oxcl/nix-flake-helium-browser`), **Tailscale**, Claude Code.
+- ~~Fingerprint~~ — `hosts/geekbook14/fingerprint.nix` fully packages the Focaltech
+      FTE4800 driver stack (out-of-tree module + proprietary libfprint blob + gusb
+      symbol-version surgery), but the sensor won't initialize (unsupported silicon).
+      Not imported; see that file's STATUS header. Kept as groundwork.
 
 ### Secure Boot (lanzaboote) — geekbook14 firmware quirks
 This GEEKOM's AMI firmware is finicky; the setup that works:
