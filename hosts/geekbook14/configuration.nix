@@ -23,18 +23,27 @@
   boot.loader.efi.efiSysMountPoint = "/boot";
   boot.supportedFilesystems = [ "ntfs" "btrfs" ];
 
-  # KMS works on this Meteor Lake panel as of kernel 6.18.35: i915 drives the
-  # internal eDP fine and we get real GPU acceleration. Earlier this panel hit
-  # "[ENCODER:...PHY B] failed to retrieve link info, disabling eDP" -> black
-  # screen, which forced a `nomodeset` software-rendering fallback; a kernel
-  # update has since fixed the eDP link, so KMS is the default again.
+  # eDP panel (Meteor Lake): the stock 6.18.35 trained this panel only
+  # intermittently under KMS ("failed to retrieve link info, disabling eDP" ->
+  # black screen). Kernel 7.0.x (set below) fixes it on the i915 driver: KMS
+  # comes up reliably with GPU acceleration at native 2880x1800.
   #
-  # Rescue entry: if a future kernel ever regresses the panel to a black screen,
-  # boot the "nomodeset-rescue" specialisation from GRUB to get a working
-  # (software-rendered) desktop, then `journalctl -b -1 -k` to see what broke.
+  # We use i915, NOT xe. On this Meteor Lake panel xe never drives the display:
+  # it doesn't claim 8086:7d55 by default, and even xe.force_probe=7d55 failed
+  # here -- both cases just fall back to the software framebuffer. i915 is also
+  # the mature, upstream-default driver for this GPU generation.
+  #
+  # Rescue: if a future kernel regresses the panel to a black screen, boot the
+  # "nomodeset-rescue" entry from GRUB for a working (software-rendered) desktop,
+  # then `journalctl -b -1 -k | grep -iE 'edp|link|i915'` to see why.
   specialisation.nomodeset-rescue.configuration = {
     boot.kernelParams = [ "nomodeset" ];
   };
+
+  # Run the latest packaged kernel (7.0.x). The stock 6.18.35 trained this Meteor
+  # Lake eDP panel only intermittently under KMS; 7.0 carries the fix. Once
+  # 26.05's default kernel advances to >= 7.0 this line can likely be dropped.
+  boot.kernelPackages = pkgs.linuxPackages_latest;
 
   # --- Nix / flakes ----------------------------------------------------------
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
