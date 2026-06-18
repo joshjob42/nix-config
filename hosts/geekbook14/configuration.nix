@@ -7,6 +7,7 @@
   imports = [
     ./hardware-configuration.nix
     ./disko.nix
+    ./kanata.nix
     # ./fingerprint.nix  # FTE4800 driver fully packaged but sensor won't init
                          # (unsupported silicon); see that file's STATUS header.
   ];
