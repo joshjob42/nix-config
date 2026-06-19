@@ -111,6 +111,19 @@ Then sign into 1Password and `secrets-render` to populate `~/.config/secrets.env
 Day-to-day rebuilds run from the private flake (`nrs` is aliased to it there); the public
 base comes in as a pinned input and is bumped with `nix flake update base`.
 
+### One-time per-machine steps (not Nix-managed)
+Some state is mutable or auth-gated, so it's set up once by hand rather than declaratively:
+- **1Password** — enable the SSH agent (Settings → Developer). It then serves your SSH key
+  for the iMac *and* GitHub (auth + commit signing); no keys on disk.
+- **Live-edited config repos** — Nix owns the binaries; these repos own the configs, so
+  clone the ones you edit directly (after the 1Password SSH agent is up):
+  ```sh
+  git clone git@github.com:joshjob42/emacs-bedrock ~/.config/emacs   # Emacs (Bedrock) config
+  ```
+- **Browser** — Helium extensions (uBlock / 1Password / SponsorBlock / Vimium) install from
+  the web store (ungoogled blocks policy force-install); Vimium mappings paste into its
+  options; natural scrolling toggles in COSMIC Settings → Input Devices.
+
 ---
 
 ## Follow-ups (after first successful boot)
