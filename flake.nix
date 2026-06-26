@@ -25,25 +25,44 @@
       # The base system + minimal home. Exposed as nixosModules.base so the
       # private full config (github:joshjob42/nix-config-private) can layer on
       # top; also built standalone below as the bootstrap install target.
+      # The minimal home block, shared by every host's base.
+      minimalHome = {
+        home-manager.useGlobalPkgs = true;
+        home-manager.useUserPackages = true;
+        home-manager.users.joshjob42 = import ./home/joshjob42.nix;
+      };
       baseModules = [
         disko.nixosModules.disko
         home-manager.nixosModules.home-manager
         lanzaboote.nixosModules.lanzaboote
         ./hosts/geekbook14/configuration.nix
-        {
-          home-manager.useGlobalPkgs = true;
-          home-manager.useUserPackages = true;
-          home-manager.users.joshjob42 = import ./home/joshjob42.nix;
-        }
+        minimalHome
+      ];
+      # `halo` — GMKTec EVO X2 (Strix Halo) + RX 9070 XT eGPU. Exposed as
+      # nixosModules.haloBase so the private full config layers on top, and built
+      # standalone below as the bootstrap install target (same scheme as base).
+      haloModules = [
+        disko.nixosModules.disko
+        home-manager.nixosModules.home-manager
+        lanzaboote.nixosModules.lanzaboote
+        ./hosts/halo/configuration.nix
+        minimalHome
       ];
     in
     {
       nixosModules.base = { imports = baseModules; };
+      nixosModules.haloBase = { imports = haloModules; };
 
       nixosConfigurations.geekbook14 = nixpkgs.lib.nixosSystem {
         inherit system;
         specialArgs = { inherit inputs; };
         modules = baseModules;
+      };
+
+      nixosConfigurations.halo = nixpkgs.lib.nixosSystem {
+        inherit system;
+        specialArgs = { inherit inputs; };
+        modules = haloModules;
       };
 
       # Wi-Fi-capable kexec installer for the no-USB install on a Wi-Fi-only laptop.
