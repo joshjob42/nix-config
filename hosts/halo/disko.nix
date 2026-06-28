@@ -15,7 +15,7 @@
     disk = {
       esp = {
         type = "disk";
-        device = "/dev/disk/by-partuuid/REPLACE-WITH-NEW-ESP-PARTUUID";
+        device = "/dev/disk/by-partuuid/c0ffee00-0000-4000-a000-000000000001";
         content = {
           # Single existing partition — disko just runs mkfs.vfat on it; it does
           # NOT create a partition table here, so the GPT stays intact.
@@ -28,7 +28,7 @@
 
       root = {
         type = "disk";
-        device = "/dev/disk/by-partuuid/REPLACE-WITH-NEW-ROOT-PARTUUID";
+        device = "/dev/disk/by-partuuid/c0ffee00-0000-4000-a000-000000000002";
         content = {
           type = "btrfs";
           extraArgs = [ "-f" "-L" "nixos" ];
